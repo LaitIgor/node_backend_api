@@ -1,11 +1,17 @@
+const path = require('path');
+
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const { MONGO_DB_URI } = require('./globalVars');
 
 const feedRoutes = require('./routes/feed');
 
 const app = express();
 
 app.use(bodyParser.json()); // application/json
+
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.use((req, res, next) => {
     // Allow cors
@@ -31,4 +37,15 @@ app.use((req, res, next) => {
 // GET /feed/posts
 app.use('/feed', feedRoutes);
 
-app.listen(8080);
+app.use((error, req, res, next) => {
+    console.log(error);
+    const statusCode = error.statusCode || 500;
+    const message = error.message;
+    res.status(statusCode).json({ message })
+})
+
+mongoose.connect(MONGO_DB_URI)
+    .then(res => {
+        app.listen(8080);
+    })
+    .catch(err => console.log(err, 'err'));
