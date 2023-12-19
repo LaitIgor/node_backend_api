@@ -5,31 +5,25 @@ const { validationResult } = require('express-validator');
 const Post = require('../models/post');
 
 exports.getPosts = (req, res, next) => {
-    Post.find()
+    const currentPage = req.query.page || 1;
+    const perPage = 2;
+    let totalItems;
+    Post.find().countDocuments()
+        .then(count => {
+            totalItems = count;
+            return Post.find()
+                .skip((currentPage - 1) * perPage)
+                .limit(perPage);
+        })
         .then(posts => {
-            res.status(200).json({ message: 'Fetched posts successfully.', posts })
+            res.status(200).json({ message: 'Fetched posts successfully.', posts, totalItems  })
         })
         .catch(err => {
             if (!err.statusCode) {
                 err.statusCode = 500;
             }
             next(err);
-        });
-    // res.status(200).json({
-    //     posts: [
-    //         {
-    //             _id: '1',
-    //             title: 'First post',
-    //             content: 'This is the first post',
-    //             imageUrl: 'images/globe.jpg',
-    //             creator: {
-    //                 name: 'Igor',
-    //             },
-    //             createdAt: new Date(),
-    //         }
-    //     ]
-    // });
-
+        })
 };
 
 exports.createPost = (req, res, next) => {
