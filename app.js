@@ -6,6 +6,7 @@ const multer = require('multer');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const feedRoutes = require('./routes/feed');
+const authRoutes = require('./routes/auth');
 
 const { MONGO_DB_URI } = require('./globalVars');
 
@@ -61,12 +62,14 @@ app.use((req, res, next) => {
 
 // GET /feed/posts
 app.use('/feed', feedRoutes);
+app.use('/auth', authRoutes);
 
 app.use((error, req, res, next) => {
     console.log(error);
     const statusCode = error.statusCode || 500;
     const message = error.message;
-    res.status(statusCode).json({ message })
+    const data = error.data;
+    res.status(statusCode).json({ message, data })
 })
 
 mongoose.connect(MONGO_DB_URI)
