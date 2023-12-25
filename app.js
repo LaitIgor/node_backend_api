@@ -7,10 +7,12 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const feedRoutes = require('./routes/feed');
 const authRoutes = require('./routes/auth');
+const cors = require('cors');
 
 const { MONGO_DB_URI } = require('./globalVars');
 
 const app = express();
+app.use(cors());
 
 const fileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -74,6 +76,11 @@ app.use((error, req, res, next) => {
 
 mongoose.connect(MONGO_DB_URI)
     .then(res => {
-        app.listen(8080);
+        const server = app.listen(8080);
+        // establishing socket.io connection
+        const io = require('./socket').init(server, { cors: {origin: '*'} });
+        io.on('connection', (socket) => {
+            console.log('Client connected');
+        })
     })
     .catch(err => console.log(err, 'err'));
