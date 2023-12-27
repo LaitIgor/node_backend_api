@@ -10,7 +10,10 @@ exports.getPosts = (req, res, next) => {
     const currentPage = req.query.page || 1;
     const perPage = 2;
     let totalItems;
-    Post.find().countDocuments()
+    Post.find()
+        .populate('creator')
+        .countDocuments()
+        .sort({ createdAt: -1 })
         .then(count => {
             totalItems = count;
             return Post.find()
@@ -60,7 +63,13 @@ exports.createPost = (req, res, next) => {
         return user.save();
     })
     .then(result => {
-        io.getIo().emit('posts', { action: 'create', post })
+        io.getIo().emit('posts', { action: 'create', post: {
+            ...post._doc, 
+            creator: {
+            _id: req.userId, 
+            name: result.name
+            }} 
+        })
         res.status(201).json({
             message: 'Post created successfully',
             post: post,
@@ -115,6 +124,7 @@ exports.updatePost = (req, res, next) => {
         throw error;
     }
     Post.findById(postId)
+        .populate('creator')
         .then(post => {
             if (!post) {
                 const error = new Error('Could not find a post.')
@@ -122,7 +132,7 @@ exports.updatePost = (req, res, next) => {
                 throw error;
             }
             // Only creator can deleted its post check
-            if (post.creator.toString() !== req.userId.toString()) {
+            if (post.creator._id.toString() !== req.userId.toString()) {
                 const error = new Error('Not authorised');
                 error.statusCode = 403;
                 throw error;
@@ -136,6 +146,7 @@ exports.updatePost = (req, res, next) => {
             return post.save();
         })
         .then(result => {
+            io.getIo().emit('posts', { action: 'update', post: result })
             res.status(200).json({ message: 'Post updated.', post: result })
         })
         .catch(err => {
@@ -174,6 +185,7 @@ exports.deletePost = (req, res, next) => {
             user.save();
         })
         .then(() => {
+            io.getIo().emit('posts', { action: 'delete', post: postId })
             res.status(200).json({ message: 'Deleted Post.' })
         })
         .catch(err => {
