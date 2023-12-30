@@ -4,15 +4,15 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const mongoose = require('mongoose');
+const { graphqlHTTP } = require('express-graphql');
 const { v4: uuidv4 } = require('uuid');
-const feedRoutes = require('./routes/feed');
-const authRoutes = require('./routes/auth');
-const cors = require('cors');
+
+const graphqlSchema = require('./graphql/schema');
+const graphqlResolver = require('./graphql/resolvers');
 
 const { MONGO_DB_URI } = require('./globalVars');
 
 const app = express();
-app.use(cors());
 
 const fileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -62,9 +62,11 @@ app.use((req, res, next) => {
     //   })
 });
 
-// GET /feed/posts
-app.use('/feed', feedRoutes);
-app.use('/auth', authRoutes);
+app.use('/graphql', graphqlHTTP({
+    schema: graphqlSchema,
+    rootValue: graphqlResolver,
+    graphiql: true
+}))
 
 app.use((error, req, res, next) => {
     console.log(error);
@@ -76,11 +78,6 @@ app.use((error, req, res, next) => {
 
 mongoose.connect(MONGO_DB_URI)
     .then(res => {
-        const server = app.listen(8080);
-        // establishing socket.io connection
-        const io = require('./socket').init(server, { cors: {origin: '*'} });
-        io.on('connection', (socket) => {
-            console.log('Client connected');
-        })
+       app.listen(8080);
     })
     .catch(err => console.log(err, 'err'));
