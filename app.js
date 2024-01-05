@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const graphqlSchema = require('./graphql/schema');
 const graphqlResolver = require('./graphql/resolvers');
+const auth = require('./middleware/auth');
 
 const { MONGO_DB_URI } = require('./globalVars');
 
@@ -46,6 +47,9 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
     next();
     // headers above allow frontend to get and post data using next code
     // post.addEventListener('click', () => {
@@ -62,10 +66,23 @@ app.use((req, res, next) => {
     //   })
 });
 
+app.use(auth);
+
 app.use('/graphql', graphqlHTTP({
     schema: graphqlSchema,
     rootValue: graphqlResolver,
-    graphiql: true
+    graphiql: true,
+    customFormatErrorFn(err) {
+        // this property will be added by express if error is detected
+        if (!err.originalError) {
+            return err;
+        }
+        const data = err.originalError.data;
+        const message = err.message || 'An error occured';
+        const code = err.originalError.code || 500;
+        return { message, status: code, data }
+
+    }
 }))
 
 app.use((error, req, res, next) => {
